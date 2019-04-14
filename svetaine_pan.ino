@@ -8,6 +8,11 @@ bool interruptFlag = false;
 
 int ledPins[8] = {13,12,8,7,6,5,4,3};
 
+int buttonMap[8] = {4,2,
+                    0,6,
+                    1,5,
+                    3,7};
+
 
 /*******************************
   Setup Function
@@ -27,7 +32,7 @@ void setup() {
     Wire.begin();//start i2c
     PCF_write8(PCF_IN_ADDRESS,255); 
     /*PCF_read8(PCF_IN_ADDRESS);*/
-    Serial.println("Setup op");
+    /*Serial.println("Setup op");*/
 
 }
 
@@ -39,10 +44,10 @@ void serial_listen(){
 
        // read data from the connected client
         if (Serial.available() > 0) {
-            int req = Serial.parseInt();
-            Serial.print(req,DEC);
+            int req = Serial.read();
+            Serial.println(req);
             updateLeds(req);
-            while(Serial.read()!=-1);
+            /*while(Serial.read()!=-1);*/
     }
 }
 
@@ -60,13 +65,14 @@ void loop()
         if(pin_num != 8){
 
             char buf[2];
-            sprintf(buf,"L%d",pin_num);
-            Serial.print(buf);
 
-            if(digitalRead(ledPins[pin_num]))
-                digitalWrite(ledPins[pin_num], LOW);
-            else
-                digitalWrite(ledPins[pin_num], HIGH);
+            if(pin_num == 7){
+                sprintf(buf,"N");
+            }
+            else{
+                sprintf(buf,"L%d",buttonMap[pin_num]);
+            }
+            Serial.print(buf);
 
         }
         interruptFlag = false;
@@ -87,8 +93,18 @@ void interrupt(){
 
 void updateLeds(int data){
 
-    for(uint8_t i = 0; i<8; i++){
-        digitalWrite(ledPins[i], (data & (1 << i)));
+    int i = 0;
+    for(i = 0; i<8; i++){
+        bool val = true;
+
+        if((data & (1 << i)))
+            val = false;
+
+        for(int j = 0; j < 8; j++){
+            if(i == buttonMap[j])
+                digitalWrite(ledPins[j], val);
+        }
+
     }
 
 }
