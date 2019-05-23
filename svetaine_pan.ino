@@ -4,14 +4,15 @@
 #include <Wire.h>
 
 uint8_t Data = 0;
+uint8_t State = 0;
 bool interruptFlag = false;
 
 int ledPins[8] = {13,12,8,7,6,5,4,3};
 
 int buttonMap[8] = {4,2,
-                    0,6,
-                    1,5,
-                    3,7};
+                    0,5,
+                    1,7,
+                    3,6};
 
 
 /*******************************
@@ -32,7 +33,6 @@ void setup() {
     Wire.begin();//start i2c
     PCF_write8(PCF_IN_ADDRESS,255); 
     /*PCF_read8(PCF_IN_ADDRESS);*/
-    /*Serial.println("Setup op");*/
 
 }
 
@@ -42,11 +42,10 @@ void setup() {
 
 void serial_listen(){
 
-       // read data from the connected client
         if (Serial.available() > 0) {
-            int req = Serial.read();
-            Serial.println(req);
-            updateLeds(req);
+            int data = Serial.read();
+            State = data;
+            updateLeds(data);
             /*while(Serial.read()!=-1);*/
     }
 }
@@ -60,6 +59,7 @@ void loop()
 
     if(interruptFlag){
 
+        while(digitalRead(INT_PIN) == HIGH);
         uint8_t pin_num = PCF_detect_low_pin();
 
         if(pin_num != 8){
@@ -67,16 +67,21 @@ void loop()
             char buf[2];
 
             if(pin_num == 7){
-                sprintf(buf,"N");
+                //sprintf(buf,"N");
+                Serial.write(0);
             }
             else{
-                sprintf(buf,"L%d",buttonMap[pin_num]);
+                uint8_t data = State;
+                data ^= (1 << buttonMap[pin_num]);
+                Serial.write(data);
+                /*sprintf(buf,"L%d",buttonMap[pin_num]);*/
             }
-            Serial.print(buf);
+            //Serial.print(buf);
 
         }
+        delay(50);
         interruptFlag = false;
-        _delay_ms(350);
+        interrupts();
 
     }
 
@@ -89,6 +94,7 @@ PCF gpio interrupt
 void interrupt(){
 
     interruptFlag = true;
+    noInterrupts();
 }
 
 void updateLeds(int data){
